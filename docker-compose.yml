@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  api1:
+    image: rinha #TODO: upload image in docker hub
+    hostname: api1
+    environment:
+      - DB_HOST=db
+      - DB_USER=feijuca
+      - DB_PASSWORD=feijuca
+      - DB_NAME=rinha
+      - DB_PORT=5432
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.37'
+          memory: '60MB'
+
+  api2:
+    image: rinha # TODO: upload image in docker hub
+    hostname: api2
+    environment:
+      - DB_HOST=db
+      - DB_USER=feijuca
+      - DB_PASSWORD=feijuca
+      - DB_NAME=rinha
+      - DB_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+    - "8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.37'
+          memory: '60MB'
+
+  traefik:
+    image: traefik:latest
+    depends_on:
+      - api1
+      - api2
+    ports:
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '30MB'
+
+  db:
+    image: postgres:latest
+    hostname: db
+    environment:
+      - POSTGRES_PASSWORD=feijuca
+      - POSTGRES_USER=feijuca
+      - POSTGRES_DB=rinha
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    deploy:
+      resources:
+        limits:
+          cpus: '0.56'
+          memory: '400MB'
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U feijuca -d rinha'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s

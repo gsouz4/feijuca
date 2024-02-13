@@ -16,8 +16,13 @@ CREATE TABLE IF NOT EXISTS transactions (
     "type" CHAR(1) NOT NULL,
     "description" VARCHAR(10) NOT NULL,
     "client_id" INTEGER NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_client FOREIGN KEY("client_id") REFERENCES clients("id")
 );
+
+-- DROP INDEX IF EXISTS idx_created_at;
+
+-- CREATE INDEX IF NOT EXISTS idx_created_at ON transactions ("created_at");
 
 INSERT INTO
     clients ("name", "limit", "balance")

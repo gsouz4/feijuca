@@ -1,15 +1,17 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
-	"feijuca/domain/entity"
+	"feijuca/api"
+	"feijuca/domain/services"
 	"feijuca/repository"
 
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	_ "github.com/lib/pq"
 )
 
@@ -26,6 +28,16 @@ func main() {
 	}
 
 	repo := repository.NewTransactionRepository(db)
+	transactionService := services.NewTransactionRepository(repo)
+	transactionController := api.NewTransactionController(transactionService)
 
-	repo.Save(context.Background(), entity.Transaction{})
+	e := echo.New()
+
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	e.GET("/clientes/:id/extrato", transactionController.HandleFindStatement())
+	e.POST("/clientes/:id/transacoes", transactionController.HandleCreateTransaction())
+
+	e.Logger.Fatal(e.Start(":8080"))
 }

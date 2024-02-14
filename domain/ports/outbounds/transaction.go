@@ -6,7 +6,6 @@ import (
 )
 
 type Transaction interface {
-	Save(ctx context.Context, transaction entity.Transaction) error
+	Save(ctx context.Context, transaction entity.Transaction) (entity.Client, error)
 	FindBankStatement(ctx context.Context, clientID int) (entity.BankStatement, error)
-	CanDebitValue(ctx context.Context, clientID int, value int) (bool, error)
 }

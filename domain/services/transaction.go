@@ -18,18 +18,11 @@ func NewTransactionRepository(repo outbounds.Transaction) inbounds.TransactionSe
 	}
 }
 
-func (s *transactionService) Save(ctx context.Context, value int, clientID int, transactionType string, description string) error {
-	if transactionType == "d" {
-		canDebit, err := s.repo.CanDebitValue(ctx, clientID, value)
-		if err != nil {
-			return err
-		}
-
-		if !canDebit {
-			return errors.New("invalid transaction")
-		}
+func (s *transactionService) Save(ctx context.Context, clientID int, value int, transactionType string, description string) (entity.Client, error) {
+	if clientID < 1 || clientID > 5 {
+		return entity.Client{}, errors.New("no rows in result set")
 	}
-
+	
 	transaction := entity.Transaction{
 		Value:       value,
 		Type:        transactionType,
@@ -37,14 +30,18 @@ func (s *transactionService) Save(ctx context.Context, value int, clientID int, 
 		ClientID:    clientID,
 	}
 
-	err := s.repo.Save(ctx, transaction)
+	client, err := s.repo.Save(ctx, transaction)
 	if err != nil {
-		return err
+		return entity.Client{}, err
 	}
 
-	return nil
+	return client, nil
 }
 
 func (s *transactionService) FindBalance(ctx context.Context, clientID int) (entity.BankStatement, error) {
+	if clientID < 1 || clientID > 5 {
+		return entity.BankStatement{}, errors.New("no rows in result set")
+	}
+
 	return s.repo.FindBankStatement(ctx, clientID)
 }

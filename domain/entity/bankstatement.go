@@ -10,5 +10,5 @@ type BankStatement struct {
 type Balance struct {
 	Total int       `json:"total"`
 	Date  time.Time `json:"data_extrato"`
-	Limit int       `json:"limit"`
+	Limit int       `json:"limite"`
 }

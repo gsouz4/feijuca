@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/gommon/log"
 )
 
 type transactionController struct {
@@ -40,29 +41,31 @@ func NewTransactionController(service inbounds.TransactionService) transactionCo
 
 func (c *transactionController) HandleCreateTransaction() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		context, cancel := context.WithCancel(ctx.Request().Context())
+		context, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		var input CreateRequest
 
 		if err := ctx.Bind(&input); err != nil {
-			return ctx.NoContent(http.StatusBadRequest)
+			return HandleError(ctx, errors.New("invalid request"))
 		}
 
 		if err := input.Validate(); err != nil {
-			return ctx.NoContent(http.StatusUnprocessableEntity)
+			return HandleError(ctx, err)
 		}
 
 		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			return ctx.NoContent(http.StatusBadRequest)
+			return HandleError(ctx, err)
 		}
 
-		if err := c.service.Save(context, id, input.Value, input.Type, input.Description); err != nil {
-			return ctx.JSON(400, nil)
+		client, err := c.service.Save(context, id, input.Value, input.Type, input.Description)
+		if err != nil {
+			log.Error(err)
+			return HandleError(ctx, err)
 		}
 
-		return ctx.NoContent(http.StatusOK)
+		return ctx.JSON(http.StatusOK, client)
 	}
 }
 
@@ -73,12 +76,12 @@ func (c *transactionController) HandleFindStatement() echo.HandlerFunc {
 
 		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			return ctx.NoContent(http.StatusBadRequest)
+			return HandleError(ctx, err)
 		}
 
 		statement, err := c.service.FindBalance(context, id)
 		if err != nil {
-			return ctx.NoContent(400) // TODO: fix
+			return HandleError(ctx, err)
 		}
 
 		return ctx.JSON(http.StatusOK, statement)

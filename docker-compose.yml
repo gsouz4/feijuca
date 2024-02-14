@@ -3,6 +3,7 @@ version: '3.9'
 services:
   api1:
     image: rinha #TODO: upload image in docker hub
+    build: .
     hostname: api1
     environment:
       - DB_HOST=db
@@ -16,15 +17,18 @@ services:
       db:
         condition: service_healthy
     expose:
-      - "8080"
+      - 5000
     deploy:
       resources:
         limits:
           cpus: '0.37'
-          memory: '60MB'
+          memory: '80MB'
+    networks:
+      internal-network:
 
   api2:
     image: rinha # TODO: upload image in docker hub
+    build: .
     hostname: api2
     environment:
       - DB_HOST=db
@@ -36,15 +40,17 @@ services:
       db:
         condition: service_healthy
     expose:
-    - "8080"
+      - 5000
     deploy:
       resources:
         limits:
           cpus: '0.37'
-          memory: '60MB'
+          memory: '80MB'
+    networks:
+      internal-network:
 
-  traefik:
-    image: traefik:latest
+  nginx:
+    image: nginx:latest
     depends_on:
       - api1
       - api2
@@ -54,7 +60,12 @@ services:
       resources:
         limits:
           cpus: '0.2'
-          memory: '30MB'
+          memory: '50MB'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      outside:
+      internal-network:
 
   db:
     image: postgres:latest
@@ -67,14 +78,25 @@ services:
       - "5432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     deploy:
       resources:
         limits:
           cpus: '0.56'
-          memory: '400MB'
+          memory: '340MB'
     healthcheck:
       test: ["CMD-SHELL", "sh -c 'pg_isready -U feijuca -d rinha'"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
+    networks:
+      internal-network:
+      outside:
+networks:
+  internal-network:
+    internal: true
+    driver: bridge
+  outside:
+    driver: bridge

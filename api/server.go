@@ -29,6 +29,10 @@ func (r *CreateRequest) Validate() error {
 	if len(r.Description) < 1 || len(r.Description) > 10 {
 		return errors.New("invalid request")
 	}
+	
+	if r.Value < 1 {
+		return errors.New("invalid request")
+	}
 
 	return nil
 }

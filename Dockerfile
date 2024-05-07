@@ -2,6 +2,10 @@ FROM golang:1.22 AS builder
 
 WORKDIR /app
 
+RUN groupadd -r rinha && useradd -g rinha rinha
+RUN chown -R rinha:rinha /app
+USER rinha
+
 COPY . ./
 
 RUN go mod download

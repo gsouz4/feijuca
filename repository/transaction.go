@@ -23,60 +23,64 @@ func NewTransactionRepository(db *pgxpool.Pool) outbounds.Transaction {
 }
 
 func (r *transactionRepository) Save(ctx context.Context, transaction entity.Transaction) (client entity.Client, err error) {
-	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return client, err
+	// tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	// if err != nil {
+	// 	return client, err
+	// }
+	// defer tx.Rollback(ctx)
+
+	if transaction.Type == "d" {
+		query := `UPDATE clients SET "balance" = clients.balance - $1 
+			WHERE id = $2 
+			AND abs("balance" - $3) <= "limit"
+			RETURNING "balance", "limit";`
+
+		var limit, balance int
+
+		err := r.db.QueryRow(
+			ctx,
+			query,
+			transaction.Value,
+			transaction.ClientID,
+			transaction.Value,
+		).Scan(&limit, &balance)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.Client{}, errors.New("invalid transaction")
+		}
+
+		if err != nil {
+			return client, err
+		}
 	}
-	defer tx.Rollback(ctx)
+
+	if transaction.Type == "c" {
+		query := `UPDATE clients SET "balance" = clients.balance + $1 WHERE id = $2 RETURNING clients.limit, clients.balance;`
+
+		var limit, balance int
+
+		err := r.db.QueryRow(ctx, query, transaction.Value, transaction.ClientID).Scan(&limit, &balance)
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.Client{}, errors.New("invalid transaction")
+		}
+
+		if err != nil {
+			return entity.Client{}, err
+		}
+	}
 
 	query := `INSERT INTO transactions ("value", "type", "description", "client_id") VALUES ($1, $2, $3, $4)`
 
-	_, err = tx.Exec(
-		ctx,
-		query,
-		transaction.Value,
-		transaction.Type,
-		transaction.Description,
-		transaction.ClientID,
-	)
-
+	_, err = r.db.Exec(ctx, query, transaction.Value, transaction.Type, transaction.Description, transaction.ClientID)
 	if err != nil {
 		return client, err
 	}
 
-	if transaction.Type == "d" {
-		query = `SELECT "balance", "limit" FROM clients WHERE id = $1;`
-
-		var balance, limit int
-		err = tx.QueryRow(ctx, query, transaction.ClientID).Scan(&balance, &limit)
-		
-		canDebit := balance - transaction.Value > -limit 
-
-		if !canDebit {
-			return client, errors.New("invalid transaction")
-		}
-
-		query = `UPDATE clients SET "balance" = $1 - clients.balance WHERE id = $2 RETURNING "balance", "limit";`
-	}
-
-	query = `UPDATE clients SET "balance" = $1 + clients.balance WHERE id = $2 RETURNING "balance", "limit";`
-
-	row := tx.QueryRow(
-		ctx,
-		query,
-		transaction.Value,
-		transaction.ClientID,
-	)
-
-	err = row.Scan(&client.Balance, &client.Limit)
-	if err != nil {
-		return client, err
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return client, err
-	}
+	// err = tx.Commit(ctx)
+	// if err != nil {
+	// 	return client, err
+	// }
 
 	return client, nil
 }
@@ -112,7 +116,9 @@ func (r *transactionRepository) FindBankStatement(ctx context.Context, clientID 
 			log.Fatal("aa")
 		}
 
-		transactions = append(transactions, transaction)
+		if transaction.Value > 0 {
+			transactions = append(transactions, transaction)
+		}
 	}
 
 	balance, err := r.FindBalance(ctx, clientID)

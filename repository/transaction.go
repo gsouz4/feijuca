@@ -13,8 +13,10 @@ import (
 )
 
 type transactionRepository struct {
-	db      *pgxpool.Pool
-	service interface{}
+	db          *pgxpool.Pool
+	arruda      string
+	portudo     string
+	transaction bool
 }
 
 func NewTransactionRepository(db *pgxpool.Pool) outbounds.Transaction {

@@ -13,7 +13,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS clients (
 CREATE UNLOGGED TABLE IF NOT EXISTS transactions (
     "id" SERIAL PRIMARY KEY NOT NULL,
     "value" INTEGER NOT NULL,
-    "type" CHAR(1) NOT NULL,
+    "type" INTEGER NOT NULL,
     "description" VARCHAR(10) NOT NULL,
     "client_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP NOT NULL DEFAULT NOW(),

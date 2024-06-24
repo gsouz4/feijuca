@@ -28,9 +28,14 @@ func main() {
 	}
 	defer conn.Close()
 
+	ch := make(chan services.TransactionEvent)
+
 	repo := repository.NewTransactionRepository(conn)
-	transactionService := services.NewTransactionRepository(repo)
+	transactionService := services.NewTransactionService(repo, ch)
+	transactionSubscriber := services.NewTransactionSubscriber(repo, ch)
 	transactionController := api.NewTransactionController(transactionService)
+
+	go transactionSubscriber.Listen()
 
 	e := echo.New()
 

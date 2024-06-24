@@ -10,19 +10,17 @@ import (
 
 type transactionService struct {
 	repo outbounds.Transaction
+	ch   chan TransactionEvent
 }
 
-func NewTransactionRepository(repo outbounds.Transaction) inbounds.TransactionService {
+func NewTransactionService(repo outbounds.Transaction, ch chan TransactionEvent) inbounds.TransactionService {
 	return &transactionService{
 		repo: repo,
+		ch:   ch,
 	}
 }
 
 func (s *transactionService) Save(ctx context.Context, clientID int, value int, transactionType string, description string) (entity.Client, error) {
-	if clientID < 1 || clientID > 5 {
-		return entity.Client{}, errors.New("no rows in result set")
-	}
-	
 	transaction := entity.Transaction{
 		Value:       value,
 		Type:        transactionType,
@@ -30,9 +28,39 @@ func (s *transactionService) Save(ctx context.Context, clientID int, value int, 
 		ClientID:    clientID,
 	}
 
-	client, err := s.repo.Save(ctx, transaction)
+	balance, err := s.repo.FindBalance(ctx, clientID)
 	if err != nil {
 		return entity.Client{}, err
+	}
+
+	if transaction.Type == "d" {
+		if (balance.Total - value) < balance.Limit {
+			return entity.Client{}, errors.New("invalid request")
+		}
+
+	}
+
+	var eventType string
+	var balanceFinal int
+
+	if transaction.Type == "d" {
+		eventType = "Debit"
+		balanceFinal -= transaction.Value
+	} else {
+		eventType = "Credit"
+		balanceFinal += transaction.Value
+	}
+
+	event := TransactionEvent{
+		EventType:   eventType,
+		Transaction: transaction,
+	}
+
+	s.ch <- event
+
+	client := entity.Client{
+		Limit:   balance.Limit,
+		Balance: balanceFinal,
 	}
 
 	return client, nil

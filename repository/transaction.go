@@ -13,7 +13,8 @@ import (
 )
 
 type transactionRepository struct {
-	db *pgxpool.Pool
+	db      *pgxpool.Pool
+	service interface{}
 }
 
 func NewTransactionRepository(db *pgxpool.Pool) outbounds.Transaction {
@@ -30,8 +31,8 @@ func (r *transactionRepository) Save(ctx context.Context, transaction entity.Tra
 	// defer tx.Rollback(ctx)
 
 	if transaction.Type == "d" {
-		query := `UPDATE clients SET "balance" = clients.balance - $1 
-			WHERE id = $2 
+		query := `UPDATE clients SET "balance" = clients.balance - $1
+			WHERE id = $2
 			AND abs("balance" - $3) <= "limit"
 			RETURNING "balance", "limit";`
 
@@ -87,12 +88,12 @@ func (r *transactionRepository) Save(ctx context.Context, transaction entity.Tra
 
 func (r *transactionRepository) FindBankStatement(ctx context.Context, clientID int) (entity.BankStatement, error) {
 	query := `
-		SELECT 
+		SELECT
 			"value",
 			"type",
 			"description",
 			"created_at"
-		FROM transactions 
+		FROM transactions
 			WHERE client_id = $1
 			ORDER BY "created_at" DESC LIMIT 10`
 
@@ -135,7 +136,7 @@ func (r *transactionRepository) FindBankStatement(ctx context.Context, clientID 
 }
 
 func (r *transactionRepository) FindBalance(ctx context.Context, clientID int) (entity.Balance, error) {
-	query := `SELECT "balance", "limit" FROM clients WHERE id = $1`
+	query := `SELECT "balance", "limit" FROM clients WHERE id = $1 FOR UPDATE`
 
 	var balance entity.Balance
 

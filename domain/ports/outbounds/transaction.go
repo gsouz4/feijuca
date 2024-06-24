@@ -8,4 +8,5 @@ import (
 type Transaction interface {
 	Save(ctx context.Context, transaction entity.Transaction) (entity.Client, error)
 	FindBankStatement(ctx context.Context, clientID int) (entity.BankStatement, error)
+	FindBalance(ctx context.Context, clientID int) (entity.Balance, error)
 }
